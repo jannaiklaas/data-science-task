@@ -1,151 +1,166 @@
-
+"""
+This script prepares the data, runs the training, and saves the model.
+"""
 import os
 import sys
-import pickle
-import json
-import logging
-import argparse
-
-import numpy as np
-import pandas as pd
-import re
-import nltk
-import matplotlib.pyplot as plt
-from nltk.tokenize import word_tokenize
-from nltk.probability import FreqDist
-from nltk.corpus import stopwords
-from nltk.tokenize import word_tokenize
-from nltk.stem import WordNetLemmatizer, PorterStemmer
-from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
-from nltk.tag import pos_tag
-from sklearn.svm import LinearSVC
-from sklearn.metrics import accuracy_score, f1_score
-from collections import defaultdict
 import time
-from collections import Counter
+import pickle
+import logging
+import pandas as pd
+from scipy.sparse import csr_matrix, save_npz
+from sklearn.model_selection import train_test_split
+from sklearn.svm import LinearSVC
+from sklearn.metrics import accuracy_score, f1_score, precision_score, \
+    recall_score, roc_auc_score
 
-# Download necessary NLTK resources
-nltk.download('punkt')
-nltk.download('stopwords')
-nltk.download('wordnet')
-nltk.download('averaged_perceptron_tagger')
+# Define directories
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.append(ROOT_DIR)  
+DATA_DIR = os.path.join(ROOT_DIR, 'data')
+PROCESSED_TRAIN_DIR = os.path.join(DATA_DIR, 'processed', 'train')
+MODEL_DIR = os.path.join(ROOT_DIR, 'outputs', 'models')
+PROCESSOR_DIR = os.path.join(ROOT_DIR, 'outputs', 'processors')
+RAW_TRAIN_DATA_PATH = os.path.join(DATA_DIR, 'raw', 'train', 'train.csv')
 
-df_train = pd.read_csv('../data/raw/train.csv')
-df_test = pd.read_csv('../data/raw/test.csv')
+from src.text_processor import TextPreprocessor
 
-# Adds the root directory to system path
-ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
-sys.path.append(os.path.dirname(ROOT_DIR))
-
-CONF_FILE = "settings.json"
-
-from utils import get_project_dir, configure_logging
-
-# Loads configuration settings from JSON
-with open(CONF_FILE, "r") as file:
-    conf = json.load(file)
-
-# Defines paths
-DATA_DIR = get_project_dir(conf['general']['data_dir'])
-MODEL_DIR = get_project_dir(conf['general']['models_dir'])
-TRAIN_PATH = os.path.join(DATA_DIR, conf['train']['table_name'])
-
-# Initializes parser for command line arguments
-parser = argparse.ArgumentParser()
-parser.add_argument("--train_file", 
-                    help="Specify inference data file", 
-                    default=conf['train']['table_name'])
-parser.add_argument("--model_path", 
-                    help="Specify the path for the output model")
-
-class TextPreprocessor():
-    def __init__(self, use_lemmatization=True, vectorization_type=None):
-        self.use_lemmatization = use_lemmatization
-        self.vectorization_type = vectorization_type
-        self.stop_words = set(stopwords.words('english')) - {'not'}
-        self.lemmatizer = WordNetLemmatizer() if use_lemmatization else None
-        self.stemmer = PorterStemmer() if not use_lemmatization else None
-        self.vectorizer = None
-        self.rare_words = None
-        # Define a dictionary for contraction expansions
-        self.contraction_mapping = {
-            r"\bdidn't\b": "did not", r"\bdon't\b": "do not",
-            r"\bwasn't\b": "was not", r"\bisn't\b": "is not",
-            r"\bweren't\b": "were not", r"\bare't\b": "are not",
-            r"\bwouldn't\b": "would not", r"\bwon't\b": "will not",
-            r"\bcouldn't\b": "could not", r"\bcan't\b": "can not",
-            r"\bain't\b": "am not", r"\bdoesn't\b": "does not",
-            r"\bshouldn't\b": "should not", r"\bhadn't\b": "had not",
-            r"\bhaven't\b": "have not", r"\bhasn't\b": "has not",
-            r"\bmustn't\b": "must not"
-        }
-
-    def preprocess(self, data, fit_vectorizer=False):
-        if 'sentiment' in data.columns:
-            y = data['sentiment'].map({'negative': 0, 'positive': 1})
-        else:
-            y = None
-        
-        if self.rare_words is None:
-            self._calculate_rare_words(data['review'])
-
-        X_cleaned = data['review'].apply(self._clean_text)
-
-        if self.vectorization_type and fit_vectorizer:
-            self.vectorizer = self._get_vectorizer()
-            X_vectorized = self.vectorizer.fit_transform(X_cleaned)
-        elif self.vectorization_type:
-            X_vectorized = self.vectorizer.transform(X_cleaned)
-        else:
-            X_vectorized = X_cleaned
-
-        return X_vectorized, y, self.vectorizer if fit_vectorizer else None
-
-    def _get_vectorizer(self):
-        if self.vectorization_type.lower() == 'ngrams':
-            return CountVectorizer(ngram_range=(1, 3), stop_words=list(self.stop_words))
-        elif self.vectorization_type.lower() == 'tf-idf':
-            return TfidfVectorizer(stop_words=list(self.stop_words))
-        else:
-            raise ValueError("Invalid vectorization type specified.")
-
-    def _initial_preprocess(self, text):
-        # Expand contractions, case-insensitive
-        for contraction, expanded in self.contraction_mapping.items():
-            text = re.sub(contraction, expanded, text, flags=re.IGNORECASE)
-        text = re.sub(r'http\S+|www\S+|https\S+', ' ', text, flags=re.MULTILINE)
-        text = re.sub(r'<.*?>', ' ', text)
-        text = re.sub(r"(n't|'d|'ll|'m|'re|'s|'ve|')", '', text, flags=re.IGNORECASE)
-        tokens = word_tokenize(text)
-        tokens = [word for word, pos in pos_tag(tokens) if pos not in ['NNP', 'NNPS']]
-        tokens = [re.sub(r'\W+', ' ', word) for word in tokens if not word.isnumeric()]
-        return [word.lower() for word in tokens]
-
-    def _calculate_rare_words(self, reviews):
-        all_words = [word for review in reviews for word in self._initial_preprocess(review)]
-        word_counts = Counter(all_words)
-        self.rare_words = {word for word, count in word_counts.items() if count == 1}
-
-    def _clean_text(self, text):
-        tokens = self._initial_preprocess(text)
-        tokens = [word for word in tokens if word not in self.rare_words and word not in self.stop_words and len(word) > 2]
-
-        if self.use_lemmatization:
-            tokens = [self.lemmatizer.lemmatize(word) for word in tokens]
-        else:
-            tokens = [self.stemmer.stem(word) for word in tokens]
-
-        return ' '.join(tokens)
-    
-
-class Training():
-    """
-    Manages the training process including running training, evaluating 
-    the model, and saving the trained model.
-    """
+class DataProcessor():
     def __init__(self) -> None:
-        self.model = LinearSVC(max_iter=5000, C=0.01, random_state=conf['general']['random_state'])
+        self.processor = TextPreprocessor(use_lemmatization=True, vectorization_type="ngrams")
+
+    def prepare_data(self) -> tuple:
+        """Takes a single file path and outputs preprocessed datasets ready for modeling"""
+        logging.info("Preparing data for training...")
+        df = self.data_extraction(RAW_TRAIN_DATA_PATH)
+        logging.info(f"Removing {df.duplicated().sum()} duplicates...")
+        df.drop_duplicates(inplace=True)
+        logging.info(f"Train dataset contains {df.shape[1]} columns and {df.shape[0]} rows")
+        train, test = self.data_split(df)
+        logging.info(f"Model to be trained with {train.shape[0]} " 
+                     f"reviews and validated with {test.shape[0]} reviews.")
+        X_train, y_train, train_processed = self.processor.preprocess(train, fit_vectorizer=True)
+        X_test, y_test, test_processed = self.processor.preprocess(test, fit_vectorizer=False)
+        logging.info(f"Preprocessing: lemmatization with {self.processor.vectorization_type} vectorization")
+        logging.info(f"Processed train data shape: {X_train.shape}")
+        logging.info(f"Processed test data shape: {X_test.shape}")
+        self.save_processor("processor_1.pkl")
+        self.save_dataset(train_processed, PROCESSED_TRAIN_DIR, 'train_processed')
+        self.save_dataset(test_processed, PROCESSED_TRAIN_DIR, 'validation_processed')
+        return X_train, y_train, X_test, y_test
+
+    def data_extraction(self, path: str) -> pd.DataFrame:
+        """Loads a .csv file and converts it DataFrame."""
+        if not os.path.isfile(path):
+            raise FileNotFoundError("The specified dataset does not exist at "
+                                    f"{path}. Check the file path.")
+        try:
+            logging.info(f"Loading dataset from {path}...")
+            df = pd.read_csv(path)
+            logging.info("Dataset loaded. It contains "
+                         f"{df.shape[1]} columns and {df.shape[0]} rows.")
+            return df
+        except Exception as e:
+            logging.error(f"An error occurred while loading data from {path}: {e}")
+            sys.exit(1)
+
+    def data_split(self, df: pd.DataFrame) -> tuple:
+        """Splits data into test and train."""
+        logging.info("Splitting data into training and test sets...")
+        train, test = train_test_split(df, test_size=0.2, stratify=df['sentiment'],
+                                random_state=42)
+        return train, test
+    
+    def save_processor(self, processor_name):
+        logging.info("Saving the preprocessor configuraiton...")
+        if not os.path.exists(PROCESSOR_DIR):
+            os.makedirs(PROCESSOR_DIR)
+        path = os.path.join(PROCESSOR_DIR, processor_name) 
+        with open(path, 'wb') as f:
+            pickle.dump(self.processor, f)
+        logging.info(f"Preprocessor saved to {path}")
+    
+    @staticmethod
+    def save_dataset(data, dir, filename: str, y=None):
+        """Stores preprocessed datasets."""
+        logging.info("Storing preprocessed data...")
+        if not os.path.exists(dir):
+            os.makedirs(dir)
+        if isinstance(data, csr_matrix):
+            path = os.path.join(dir, "review_" + filename + ".npz")
+            save_npz(path, data)
+            if y:
+                path = os.path.join(dir, "sentiment_" + filename + ".csv")
+                y.to_csv(path, index=False)
+        else:
+            path = os.path.join(dir, filename + ".csv")
+            data.to_csv(path, index=False)
+        logging.info(f"Data saved to {path}")
+
+    
+class Model():
+    def __init__(self) -> None:
+        self.model = LinearSVC(random_state=42, C=0.01, max_iter=5000)
+
+    def run_training(self, X_train, y_train, X_test, y_test) -> None:
+        logging.info("Running training...")
+        start_time = time.time()
+        self.train(X_train, y_train)
+        end_time = time.time()
+        logging.info(f"Training completed in {end_time - start_time:.2f} seconds.")
+        logging.info("Testing model on validation set:")
+        self.evaluate(self.model, X_test, y_test)
+        self.save()
     
     def train(self, X_train: pd.DataFrame, y_train: pd.DataFrame) -> None:
         logging.info("Training the model...")
         self.model.fit(X_train, y_train)
+
+    @staticmethod
+    def evaluate(model: LinearSVC, X_test: pd.DataFrame, y_test: pd.DataFrame) -> float:
+        logging.info("Calculating performance metrics...")
+        # Calculate metrics
+        y_pred = model.predict(X_test)
+        accuracy = accuracy_score(y_test, y_pred)
+        precision = precision_score(y_test, y_pred)
+        recall = recall_score(y_test, y_pred)
+        f1 = f1_score(y_test, y_pred)
+        auc_roc = roc_auc_score(y_test, model.decision_function(X_test))
+        metrics = {
+            'Accuracy': accuracy,
+            'Precision': precision,
+            'Recall': recall,
+            'F1 Score': f1,
+            'AUC ROC': auc_roc
+        }
+        logging.info("Performance metrics:\n"
+                     f"Accuracy: {metrics['Accuracy']: .4f}\n"
+                     f"Precision: {metrics['Precision']: .4f}\n"
+                     f"Recall: {metrics['Recall']: .4f}\n"
+                     f"F1 score: {metrics['F1 Score']: .4f}\n"
+                     f"AUC ROC: {metrics['AUC ROC']: .4f}\n")
+        return metrics
+
+    def save(self) -> None:
+        """Saves the trained model to the specified path."""
+        logging.info("Saving the model...")
+        if not os.path.exists(MODEL_DIR):
+            os.makedirs(MODEL_DIR)
+        # Use the model name from settings.json
+        path = os.path.join(MODEL_DIR, 'model_1.pkl') 
+        with open(path, 'wb') as f:
+            pickle.dump(self.model, f)
+        logging.info(f"Model saved to {path}")
+
+def main():
+    logging.basicConfig(level=logging.INFO, 
+                        format='%(asctime)s - %(levelname)s - %(message)s')
+
+    data_proc = DataProcessor()
+    model = Model()
+
+    X_train, y_train, X_test, y_test = data_proc.prepare_data()
+    model.run_training(X_train, y_train, X_test, y_test)
+
+
+if __name__ == "__main__":
+    main()
