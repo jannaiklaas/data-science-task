@@ -9,14 +9,19 @@ from sklearn.svm import LinearSVC
 
 # Define directories
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-sys.path.append(ROOT_DIR)  
+sys.path.append(ROOT_DIR) 
+
+# Directories for raw and processed test data
 DATA_DIR = os.path.join(ROOT_DIR, 'data')
-PROCESSED_INFERENCE_DIR = os.path.join(DATA_DIR, 'processed', 'inference')
-MODEL_DIR = os.path.join(ROOT_DIR, 'outputs', 'models')
-PROCESSOR_DIR = os.path.join(ROOT_DIR, 'outputs', 'processors')
-RESULTS_DIR = os.path.join(ROOT_DIR, 'outputs', 'predictions')
 RAW_TEST_DATA_PATH = os.path.join(DATA_DIR, 'raw', 'inference', 'test.csv')
-PREDICTIONS_DIR = os.path.join(ROOT_DIR, 'outputs', 'predictions')
+PROCESSED_INFERENCE_DIR = os.path.join(DATA_DIR, 'processed', 'inference')
+
+# Directories for models, processors, inference metrics and figures
+OUTPUT_DIR = os.path.join(ROOT_DIR, 'outputs')
+MODEL_DIR = os.path.join(OUTPUT_DIR, 'models')
+PROCESSOR_DIR = os.path.join(OUTPUT_DIR, 'processors')
+FIG_DIR = os.path.join(OUTPUT_DIR, 'figures')
+PREDICTIONS_DIR = os.path.join(OUTPUT_DIR, 'predictions')
 
 from src.text_processor import TextPreprocessor
 from src.train.train import DataProcessor, Model
@@ -28,10 +33,8 @@ def run_inference(path):
     logging.info("Preprocessing inference data...")
     X_infer, y_infer, infer_processed = processor.preprocess(infer_raw, fit_vectorizer=False)
     DataProcessor().save_dataset(infer_processed, PROCESSED_INFERENCE_DIR, 'test_processed')
-    predictions = predict_sentiment(model, X_infer, infer_raw)
-    metrics = Model().evaluate(model, X_infer, y_infer)
-    store_predictions(predictions)
-    store_metrics(metrics)
+    predict_sentiment(model, X_infer, infer_raw)
+    Model().evaluate(model, X_infer, y_infer, status="inference")
 
 def get_model(model_name: str = 'model_1.pkl') -> LinearSVC:
     """Loads and returns a trained model."""
@@ -71,27 +74,13 @@ def predict_sentiment(model: LinearSVC, X_infer, infer_data: pd.DataFrame):
     sentiment_map = {0: "negative", 1: "positive"}
     infer_data['predictions'] = [sentiment_map[pred] for pred in predictions]
     logging.info(f"Inference completed in {end_time - start_time} seconds.")
-    return infer_data
-
-def store_predictions(predictions: pd.DataFrame) -> None:
-    """Store the prediction in 'predictions' directory."""
     logging.info("Saving predictions...")
     if not os.path.exists(PREDICTIONS_DIR):
         os.makedirs(PREDICTIONS_DIR)
     path = os.path.join(PREDICTIONS_DIR, 'predictions.csv')
-    predictions.to_csv(path, index=False)
+    infer_data.to_csv(path, index=False)
     logging.info(f"Predictions saved to {path}")
 
-def store_metrics(metrics: dict) -> None:
-    """Store the inference performance metrics in a .txt file."""
-    logging.info("Saving performance metrics...")
-    if not os.path.exists(PREDICTIONS_DIR):
-        os.makedirs(PREDICTIONS_DIR)
-    path = os.path.join(PREDICTIONS_DIR, 'metrics.txt')
-    metrics_str = "\n".join([f"{key}: {value}" for key, value in metrics.items()])
-    with open(path, "w") as file:
-        file.write(metrics_str)
-    logging.info(f"Metrics saved to {path}")
 
 def main():
     logging.basicConfig(level=logging.INFO, 

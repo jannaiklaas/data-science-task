@@ -6,21 +6,32 @@ import sys
 import time
 import pickle
 import logging
+import numpy as np
 import pandas as pd
+import seaborn as sns
+from datetime import datetime
+import matplotlib.pyplot as plt
 from scipy.sparse import csr_matrix, save_npz
 from sklearn.model_selection import train_test_split
 from sklearn.svm import LinearSVC
 from sklearn.metrics import accuracy_score, f1_score, precision_score, \
-    recall_score, roc_auc_score
+    recall_score, roc_auc_score, confusion_matrix
 
 # Define directories
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-sys.path.append(ROOT_DIR)  
+sys.path.append(ROOT_DIR) 
+
+# Directories for raw and processed train data
 DATA_DIR = os.path.join(ROOT_DIR, 'data')
-PROCESSED_TRAIN_DIR = os.path.join(DATA_DIR, 'processed', 'train')
-MODEL_DIR = os.path.join(ROOT_DIR, 'outputs', 'models')
-PROCESSOR_DIR = os.path.join(ROOT_DIR, 'outputs', 'processors')
 RAW_TRAIN_DATA_PATH = os.path.join(DATA_DIR, 'raw', 'train', 'train.csv')
+PROCESSED_TRAIN_DIR = os.path.join(DATA_DIR, 'processed', 'train')
+
+# Directories for models, processors, validation metrics and figures
+OUTPUT_DIR = os.path.join(ROOT_DIR, 'outputs')
+MODEL_DIR = os.path.join(OUTPUT_DIR, 'models')
+PROCESSOR_DIR = os.path.join(OUTPUT_DIR, 'processors')
+FIG_DIR = os.path.join(OUTPUT_DIR, 'figures')
+PREDICTIONS_DIR = os.path.join(OUTPUT_DIR, 'predictions')
 
 from src.text_processor import TextPreprocessor
 
@@ -46,7 +57,7 @@ class DataProcessor():
         self.save_processor("processor_1.pkl")
         self.save_dataset(train_processed, PROCESSED_TRAIN_DIR, 'train_processed')
         self.save_dataset(test_processed, PROCESSED_TRAIN_DIR, 'validation_processed')
-        return X_train, y_train, X_test, y_test
+        return X_train, y_train, X_test, y_test, self.processor.vectorizer
 
     def data_extraction(self, path: str) -> pd.DataFrame:
         """Loads a .csv file and converts it DataFrame."""
@@ -101,22 +112,19 @@ class Model():
     def __init__(self) -> None:
         self.model = LinearSVC(random_state=42, C=0.01, max_iter=5000)
 
-    def run_training(self, X_train, y_train, X_test, y_test) -> None:
+    def run_training(self, X_train, y_train, X_test, y_test, vectorizer) -> None:
         logging.info("Running training...")
         start_time = time.time()
-        self.train(X_train, y_train)
+        self.model.fit(X_train, y_train)
         end_time = time.time()
         logging.info(f"Training completed in {end_time - start_time:.2f} seconds.")
         logging.info("Testing model on validation set:")
-        self.evaluate(self.model, X_test, y_test)
+        self.evaluate(self.model, X_test, y_test, status="validation")
+        self.plot_feature_importances(vectorizer=vectorizer, top_n=50, fig_name='feature_importance')
         self.save()
-    
-    def train(self, X_train: pd.DataFrame, y_train: pd.DataFrame) -> None:
-        logging.info("Training the model...")
-        self.model.fit(X_train, y_train)
 
     @staticmethod
-    def evaluate(model: LinearSVC, X_test: pd.DataFrame, y_test: pd.DataFrame) -> float:
+    def evaluate(model: LinearSVC, X_test: pd.DataFrame, y_test: pd.DataFrame, status: str, model_name = "model_1") -> float:
         logging.info("Calculating performance metrics...")
         # Calculate metrics
         y_pred = model.predict(X_test)
@@ -126,6 +134,9 @@ class Model():
         f1 = f1_score(y_test, y_pred)
         auc_roc = roc_auc_score(y_test, model.decision_function(X_test))
         metrics = {
+            'Time': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            'Model': model_name,
+            'Status': status,
             'Accuracy': accuracy,
             'Precision': precision,
             'Recall': recall,
@@ -133,12 +144,78 @@ class Model():
             'AUC ROC': auc_roc
         }
         logging.info("Performance metrics:\n"
+                     f"Model name: {model_name}\n"
+                     f"Status: {status}\n"
                      f"Accuracy: {metrics['Accuracy']: .4f}\n"
                      f"Precision: {metrics['Precision']: .4f}\n"
                      f"Recall: {metrics['Recall']: .4f}\n"
                      f"F1 score: {metrics['F1 Score']: .4f}\n"
                      f"AUC ROC: {metrics['AUC ROC']: .4f}\n")
-        return metrics
+        
+        logging.info("Saving performance metrics...")
+        if not os.path.exists(PREDICTIONS_DIR):
+            os.makedirs(PREDICTIONS_DIR)
+        path = os.path.join(PREDICTIONS_DIR, 'metrics.txt')
+        metrics_str = "\n".join([f"{key}: {value}" for key, value in metrics.items()])
+        with open(path, "a") as file:
+            file.write(metrics_str + "\n\n")
+        logging.info(f"Metrics saved to {path}")
+        Model.plot_confusion_matrix(y_test, y_pred, status, model_name)
+
+    def plot_feature_importances(self, vectorizer, top_n=20, fig_name='feature_importance_plot', model_name='model_1'):
+        """Plot and save feature importances."""
+        logging.info("Plotting feature importances...")
+        
+        # Get coefficients and feature names
+        coefs = self.model.coef_.ravel()
+        feature_names = vectorizer.get_feature_names_out()
+        
+        # Get the indices of the top n positive and negative coefficients
+        top_positive_indices = np.argsort(coefs)[-top_n:][::-1]  # Most positive at the top
+        top_negative_indices = np.argsort(coefs)[:top_n]  # Most negative at the bottom
+        
+        # Combine positive and negative indices, with positive first for top of plot
+        top_indices = np.hstack([top_positive_indices, top_negative_indices[::-1]])
+        top_features = feature_names[top_indices]
+        top_coefs = coefs[top_indices]
+        
+        # Create the plot
+        plt.figure(figsize=(10, top_n/2))  # Adjust height as needed
+        colors = ['green' if c > 0 else 'red' for c in top_coefs]
+        plt.barh(np.arange(top_n * 2), top_coefs, color=colors)
+        plt.yticks(np.arange(top_n * 2), top_features)
+        plt.xlabel('Coefficient Value')
+        plt.title(f'Top {top_n} Positive and Negative Feature Importances in {model_name}')
+        plt.axvline(x=0, color='k', linestyle='--')  # Add a vertical line at x=0
+        # Invert y-axis to have the most important feature at the top
+        plt.gca().invert_yaxis()
+        # Save the plot
+        FIG_DIR = os.path.join('outputs', 'figures')  # Define your FIG_DIR
+        if not os.path.exists(FIG_DIR):
+            os.makedirs(FIG_DIR)
+        fig_path = os.path.join(FIG_DIR, f"{fig_name}.png")
+        plt.savefig(fig_path, bbox_inches='tight')  # Use bbox_inches='tight' to fit the plot
+        logging.info(f"Feature importance plot saved to {fig_path}")
+        plt.close()
+
+    @staticmethod
+    def plot_confusion_matrix(y_true, y_pred, status, model_name):
+        # Calculate confusion matrix
+        cm = confusion_matrix(y_true, y_pred)
+        fig, ax = plt.subplots(figsize=(8, 6))
+        sns.heatmap(cm, annot=True, fmt='d', cmap='plasma', ax=ax)
+        ax.set_title(f'Confusion Matrix: {status}')
+        ax.set_xlabel('Predicted Labels')
+        ax.set_ylabel('True Labels')
+        ax.xaxis.set_ticklabels(['Negative', 'Positive'])
+        ax.yaxis.set_ticklabels(['Negative', 'Positive'])
+        FIG_DIR = os.path.join('outputs', 'figures')  # Define your FIG_DIR
+        if not os.path.exists(FIG_DIR):
+            os.makedirs(FIG_DIR)
+        fig_path = os.path.join(FIG_DIR, f"{model_name}_{status}_confusion_matrix.png")
+        plt.savefig(fig_path, bbox_inches='tight')
+        logging.info(f"Confusion matrix plot saved to {fig_path}")
+        plt.close(fig)
 
     def save(self) -> None:
         """Saves the trained model to the specified path."""
@@ -158,8 +235,8 @@ def main():
     data_proc = DataProcessor()
     model = Model()
 
-    X_train, y_train, X_test, y_test = data_proc.prepare_data()
-    model.run_training(X_train, y_train, X_test, y_test)
+    X_train, y_train, X_test, y_test, vectorizer = data_proc.prepare_data()
+    model.run_training(X_train, y_train, X_test, y_test, vectorizer)
 
 
 if __name__ == "__main__":
