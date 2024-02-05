@@ -2,15 +2,98 @@
 The purpose of this project is to predict the sentiment of a movie review by training a model, validating it and deploying through containerization.
 
 # Contents
-I. Data Science Part
-* EDA
-* Preprocessing
-* Modeling and Model Selection
-* Potential Business Application
+[Part I: Data Science](#part-i-data-science)
+* [EDA Findings](#eda-findings)
+* [Feature Preprocessing](#feature-preprocessing)
+* [Modeling](#modeling)
+* [Comprehensive Evaluation](#comprehensive-evaluation)
+* [Potential Value for Business](#potential-value-for-business)
 
-II. ML Part
-* TL;DR: Execution Instructions
+[Part II: Machine Learning Engineering](#part-ii-machine-learning-engineering)
+* [TL;DR: Execution Instructions](#tldr-execution-instructions)
 
+# Part I: Data Science
+In this part, different preprocessing approaches were explored and several models were tried on the train dataset ("train.csv"). Detailed methods and findings are described in the project's notebook ("Iklaas_J_Final_Project_DS23.ipynb"). The ultimate goal of this part was to determine some of the best algorithms to achieve a validation accuracy of at least 0.85. 
+
+As it was noted at the beginning of the notebook, some terms are used interchangeably in this project: "words"/"tokens"/"features", "reviews"/"documents", "dataset"/"corpus" and "target"/"sentiment".
+## EDA Findings
+The raw train dataset initially contained 40,000 reviews, equally split between the two sentiment labels - positive and negative. There were only two columns in the dataset: "review" and "sentiment". The initial inspection of the dataset revealed the presence of special characters, contractions, and proper nouns, all of which were removed from the dataset in the preprocessing stage. 
+
+No missing values were identified. However, the dataset contained 272 duplicates, which were immediately dropped. Since this was comparatively a small fraction of the data, this removal was unlikely to disrupt the balance between the target classes - even if all duplicates were from the same class.
+
+Upon closer inspection of the reviews, the following descriptive statistics was obtained:
+* The total number of unique tokens: 172,303
+* Smallest number of tokens in a document: 9
+* Largest number of tokens in a document: 2,911
+* Average number of tokens in a document: 279.82
+* Median number of tokens in a document: 209
+* Number of tokens that appeared only once in the entire corpus: 93,648
+* Most common tokens in either sentiment label were special characters, HTML tags, articles, prepositions, pronouns, and other stop words. All of these were removed in the preprocessing stage.
+* Least common tokens in either sentiment label mostly contained special characters (like periods and hyphens) and/or were capitalized. 
+* There were a few words that were misspelled, meaning that the dataset (or at least the rare words) should have been run through spell-checking to reduce the volume of unique features and improve data quality. However, due to the large number of tokens, spell-checker's high computational cost and constrained hardware and time, spell-checking was not implemented in this project.
+
+## Feature Preprocessing
+
+The following feature preprocessing steps were taken:
+* Splitting train dataset into train and validation subsets (test_size=0.2)
+* Splitting each subset into X (reviews) and y (sentiment). The latter was numerically encoded (1 for positive, 0 for negative)
+* Expansion of contractions (e. g. "didn't" became "did not"). This was necessary to preserve negation in the sentence after removal of stop words.
+* Removal of URLs
+* Removal of HTML tags
+* Removal of contractions ('ve, 'd, 'll, 'm, etc.)
+* Tokenization
+* Removal of proper nouns
+* Removal of special characters
+* Removal of numbers
+* Conversion to lower case
+* Removal of stop words from the English NLTK library, excluding "not". The word "not" was preserved in the corpus to preserve the so that "I didn't enjoy the movie" would not become "enjoy movie".
+* Removal of tokens with length of 2 or less characters
+* Removal of rare words (that appear only once in the entire corpus). It might have made more sense to spell check those rare words first, but it would have taken several hours to do that every time dataset is prepared since we have tens of thousands of rare words. Additionally, rare words were only calculated for the train subset, i.e. the rare words that were removed from the validation subset were deemed rare only for the train corpus.
+* Stemming or lemmatization
+* Vectorization: n-grams or TF-IDF. For n-grams, the range was set to include unigrams, bigrams, and trigrams. Vectorizer was fit on the train subset and used to transform the validation subset.
+
+Following the creation of a single preprocessing pipeline (which can be found in the "text_processor.py" script), four sets of train-validation data were created with varying parameters:
+* Lemmatization with n-grams vectorization
+* Lemmatization with TF-IDF vectorization
+* Stemming with n-grams vectorization
+* Stemming with TF-IDF vectorization
+
+After preprocessing (but before vectorization), the number of unique tokens was significantly brought down. Now the smallest document contained only one token, and the longest document had 969 tokens. Both negative and positive labels had "not", "movie", "film", "one" and "like" as the most common features. Some words that would typically be considered as stop words ("would", "could", "one", "get", "even", etc.) were still present in the corpus and were some of the most common for both labels. In the notebook's Appendix section I tried removing words like "movie" and "film", and I also tried removing stop words from SpaCy library on top of the NLTK stop words. However, those extra cleaning steps did not increase the model's accuracy, therefore I decided to keep the original preprocessing steps unchanged.
+
+### Stemming vs. Lemmatization
+Here are some things that differentiated stemming from lemmatization
+
+* Stemming took slightly longer to run preprocessing: 351.44 seconds for stemming and 324.47 for lemmatization
+* Less unique tokens in the stemmed data: 20,762 tokens for stemming and 30,853 for lemmatization
+* As expected, stemming resulted in creation of non-existent words like "charact" for "character", "realli" for "really", "peopl" for "people", etc.
+* Most common words for the two techniques were mostly the same. However, some tokens, despite preserving their spelling, became more or less common for either technique. For example, word "great" appeared more frequently in the positive lemmatized reviews than in the positive stemmed reviews.
+
+
+## Modeling
+Modeling was performed with four traditional machine learning algorithms:
+* LinearSVC. This one is a lighter version of the SVC algorithm. It takes less time to train than the original version with linear kernel - which can be somewhat problematic with a large dataset like the one in this project.
+* Logistic regression. Ideally, I would have implemented logistic regression with a deep learning model- which would be a long and heavy task to perform for my machine or Docker.
+* Random Forest, which I chose in lieu of a Decision Tree since the latter tend to overfit more
+* CatBoost. I chose this one because it works well with categorical features and does not require much hyperparameter tuning.
+
+I chose these algorithms because in the past I had seen them provide great results in other classification tasks -- better than KNN, Naive Bayes, or decision trees.  
+
+All four models were trained on four datasets, outputting 16 baseline models, where only random state was set (for Logistic Regression and LinearSVM `max_iter` was increased to 5000 to ensure complete convergence). 
+
+The problem of performing hyperparameter tuning on all four models was in the training time. A single training took anywhere between a few seconds to an hour. Performing hyperparameter tuning for the decision tree model on the "best" dataset (lemmatized with n-grams vectorization) using grid search, cross-validation, two hyperparameter, each with only 2 possible values would have taken at least 2.5 hours (assuming I won't do anything else on my machine in the meantime). Therefore, hyperparameters were tuned only for the fastest models (which were LinearSVC and LogisticRegression) and only with the "best" dataset. 
+
+The LinearSVC model was tuned for the regularization parameter `C` (values given were 0.001, 0.01, 0.1, and 1) and the loss function type (`hinge` or `squared_hinge`). Grid search was performed with cross-validation over 5 folds. The highest accuracy was obtained at `C = 0.01, loss = "squared_hinge"`. It took about a couple of minutes to perform hyperparameter tuning for this model.
+
+The Logistic Regression model was also tuned for the regularization parameter (values given were 1, 10, and 100) and for the solver (`saga` or `lbfgs`). Grid search was also performed with cross-validation over 5 folds. The highest accuracy was obtained at `C = 100, solver = "saga"`. The tuning took almost an hour for this model, despite it having 10 less fits than the LinearSVC tuning.
+
+## Comprehensive Evaluation
+
+
+
+
+## Potential Value for Business
+
+# Part II: Machine Learning Engineering
 ## TL;DR: Execution Instructions
 
 0. Ensure you have [Python](https://www.python.org/downloads/) (preferably version 3.10.12), [git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git), and [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed on your machine (in case you don't, click the corresponding hyperlinks). If you know how to clone a repository and have already done so with this project, jump to Step 6. 
