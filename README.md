@@ -335,7 +335,7 @@ Once the installation is completed, you can open Docker Desktop to confirm it's 
 Keep in mind that Docker requires you to have virtualization enabled in your system's BIOS settings. If you encounter issues, please verify your virtualization settings, or refer to Docker's installation troubleshooting guide. Now you're prepared to work with Dockerized applications!
 
 ## Data
-The raw data is not included with the project by default. It should downloaded from an [online source](https://github.com/jannaiklaas/datasets/tree/main/movie-reviews). Once you have the remote repository cloned to your local destination, you can run the following code in the Terminal/Powershell at the local "data-science-task" repository's location:
+The raw data is not included with the project by default. It should be downloaded from an [online source](https://github.com/jannaiklaas/datasets/tree/main/movie-reviews). Once you have the remote repository (`data-science-task`) cloned to your local destination, you can run the following code in the Terminal/Powershell at the local repository's location:
 
 ```bash
 python3 src/data_loader.py
