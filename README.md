@@ -187,7 +187,7 @@ The potential application and value for businesses in predicting the sentiment o
 ```bash
 python3 src/data_loader.py
 ```
-* You will see logs directly in your Terminal/Powershell. Once the data is dowloaded, make sure the "data" directory is created inside the "data-science-task" folder. Click on "data" folder -> "raw" -> "train" or "inference" and check if "train.csv" and "test.csv" exist at the respective locations. Go to the next step only after ensuring both datasets exist. 
+* You will see logs directly in your Terminal/Powershell. Once the data is downloaded, make sure the "data" directory is created inside the "data-science-task" folder. Click on "data" folder -> "raw" -> "train" or "inference" and check if "train.csv" and "test.csv" exist at the respective locations. Go to the next step only after ensuring both datasets exist. 
 
 8. Build the training Docker image. Paste this code and hit enter:
 ```bash
