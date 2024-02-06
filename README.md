@@ -54,9 +54,9 @@ The raw train data underwent the following preprocessing steps:
 * Vectorize the text using either n-grams (including unigrams, bigrams, and trigrams) or TF-IDF. The vectorizer will be fitted on the train subset and applied to both subsets.
 
 Eventually, four sets of train-test data were prepared with varying parameters:
-* Lemmatization with ngrams vectorization
+* Lemmatization with n-grams vectorization
 * Lemmatization with TF-IDF vectorization
-* Stemming with ngrams vectorization
+* Stemming with n-grams vectorization
 * Stemming with TF-IDF vectorization
 
 **General remarks:**
