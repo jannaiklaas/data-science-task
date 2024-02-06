@@ -4,3 +4,4 @@ matplotlib == 3.8.2
 seaborn == 0.13.2
 scikit_learn==1.2.2
 nltk == 3.8.1
+requests == 2.31.0

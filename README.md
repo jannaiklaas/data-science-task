@@ -183,17 +183,33 @@ The potential application and value for businesses in predicting the sentiment o
 
 6. Open a new Terminal/Powershell at "data-science-task" folder
 
-7. Download the raw data by running this code:
+7. You will need "request" module to download data. If you do not have it installed, run the following command in your Terminal/Powershell:
+
+```bash
+pip install requests
+```
+Alternatively you can install it from the "requirements.txt" file:
+```bash
+pip install -r "requirements.txt"
+```
+If you are using Anaconda, then you can download the module by running this code:
+```bash
+conda install requests
+```
+
+8. Download the raw data by running this code in Terminal/Powershell:
 ```bash
 python3 src/data_loader.py
 ```
-* You will see logs directly in your Terminal/Powershell. Once the data is dowloaded, make sure the "data" directory is created inside the "data-science-task" folder. Click on "data" folder -> "raw" -> "train" or "inference" and check if "train.csv" and "test.csv" exist at the respective locations. Go to the next step only after ensuring both datasets exist. 
+* Alternatively, you can run the script "data_loader.py" interactively in the VSCode IDE by pressing the run button. 
 
-8. Build the training Docker image. Paste this code and hit enter:
+* Once you run the script, you will see logs directly in your Terminal/Powershell. Once the data is dowloaded, make sure the "data" directory is created inside the "data-science-task" folder. Click on "data" folder -> "raw" -> "train" or "inference" and check if "train.csv" and "test.csv" exist at the respective locations. Go to the next step only after ensuring both datasets exist. 
+
+9. Open Docker Desktop. Build the training Docker image. Paste this code in the Terminal/Powershell and hit enter:
 ```bash
 docker build -f ./src/train/Dockerfile -t training_image .
 ```
-9. Run the training container as follows:
+10. Run the training container as follows (execution may take up to 10 minutes):
 ```bash
 docker run -v $(pwd)/outputs:/app/outputs -v $(pwd)/data:/app/data training_image
 ```
@@ -202,13 +218,13 @@ Note: If you are using Windows Powershell, the code above may not work. In that 
 docker run -v ${PWD}/outputs:/app/outputs -v ${PWD}/data:/app/data training_image
 ```
 
-10. You will see the training logs directly in the Terminal/Powershell. Once the training is complete, model's validation metrics will be displayed in the terminal, which you can also check in the "metrics.txt" file. The file will be located in the newly created "outputs" directory, inside "predictions" folder. The "outputs" directory will also contain "models", "figures" and "processors" folders. Each of these folders should have relevant files stored. For example, the "figures" folder will have two .png files: one with a feature importance plot and one with a validaiton confusion matrix.
+11. You will see the training logs directly in the Terminal/Powershell. Once the training is complete, model's validation metrics will be displayed in the terminal, which you can also check in the "metrics.txt" file. The file will be located in the newly created "outputs" directory, inside "predictions" folder. The "outputs" directory will also contain "models", "figures" and "processors" folders. Each of these folders should have relevant files stored. For example, the "figures" folder will have two .png files: one with a feature importance plot and one with a validaiton confusion matrix.
 
-11. Build the inference Docker image. Paste this code into the Terminal/Powershell and hit enter:
+12. Build the inference Docker image. Paste this code into the Terminal/Powershell and hit enter:
 ```bash
 docker build -f ./src/inference/Dockerfile --build-arg model_name=model_1.pkl --build-arg processor_name=processor_1.pkl -t inference_image .
 ```
-12. Run the inference container as follows:
+13. Run the inference container as follows:
 ```bash
 docker run -v $(pwd)/outputs:/app/outputs -v $(pwd)/data:/app/data inference_image
 ```
@@ -216,7 +232,7 @@ Note: If you are using Windows Powershell, the code above may not work. In that 
 ```bash
 docker run -v ${PWD}/outputs:/app/outputs -v ${PWD}/data:/app/data inference_image
 ```
-13. After the container finishes running, you will see the inference metrics in the Terminal/Powershell, which will be automatically added to the "metrics.txt" file. In the local "data-science-task" folder, you should also see the newly created "predictions.csv" file inside "predictions" folder in "outputs" directory.  
+14. After the container finishes running, you will see the inference metrics in the Terminal/Powershell, which will be automatically added to the "metrics.txt" file. In the local "data-science-task" folder, you should also see the newly created "predictions.csv" file inside "predictions" folder in "outputs" directory.  
 
 ## Project Structure
 This project has a modular structure, where each folder serves a specific purpose. Folders "data" and "outputs" are not included in this repository as they are created during training and inference.
@@ -335,13 +351,26 @@ Once the installation is completed, you can open Docker Desktop to confirm it's 
 Keep in mind that Docker requires you to have virtualization enabled in your system's BIOS settings. If you encounter issues, please verify your virtualization settings, or refer to Docker's installation troubleshooting guide. Now you're prepared to work with Dockerized applications!
 
 ## Data
-The raw data is not included with the project by default. It should downloaded from an [online source](https://github.com/jannaiklaas/datasets/tree/main/movie-reviews). Once you have the remote repository cloned to your local destination, you can run the following code in the Terminal/Powershell at the local "data-science-task" repository's location:
+The raw data is not included with the project by default. It should downloaded from an [online source](https://github.com/jannaiklaas/datasets/tree/main/movie-reviews) or uploaded from the local machine. The way the data is uploaded is by running "data_loader.py" script. This script utilizes `requests` module, and here's how you can install it if you do not have it installed yet. Once you have the remote repository cloned to your local destination, you can run the following code in the Terminal/Powershell at the local "data-science-task" repository's location:
 
+```bash
+pip install requests
+```
+Alternatively you can install it from the "requirements.txt" file:
+```bash
+pip install -r "requirements.txt"
+```
+If you are using Anaconda, then you can download the module by running this code:
+```bash
+conda install requests
+```
+Once you have the module installed, you can run the "data_loader.py" script. One way to do it is by running this code in your Terminal/Powershell:
 ```bash
 python3 src/data_loader.py
 ```
+You can also run the script interactively in the VSCode IDE by pressing the run button.
 
-Alternatively, you can provide path to the raw data if it is already on your local machine:
+If the data is already on your local machine, you can provide the paths to the raw data :
 
 ```bash
 python3 src/data_loader.py --local_train_path /path_to_local_train.csv --local_test_path /path_to_local_test.csv
@@ -353,12 +382,12 @@ Running the "data_loader.py" script will create "data" folder at the local "data
 
 ## Training 
 
-The recommended way to run the training process is in a Docker container. First, build the training image. In the Terminal/Powershell at your local "data-science-task" folder run the following code:
+The recommended way to run the training process is in a Docker container. First, build the training image. Open Docker Desktop to start the Docker engine. In the Terminal/Powershell at your local "data-science-task" folder run the following code:
 
 ```bash
 docker build -f ./src/train/Dockerfile -t training_image .
 ```
-Once the image is built, you will see it in the "Images" tab in Docker Desktop. Then, you may run the image by pressing the run button in the application (the outputs will then be saved in the container only), but I recommend running it with this code in your Terminal:
+Once the image is built, you will see it in the "Images" tab in Docker Desktop. Then, you may run the image by pressing the run button in the application (the outputs will then be saved in the container only), but I recommend running it with this code in your Terminal (execution may take up to 10 minutes):
 
 ```bash
 docker run -v $(pwd)/outputs:/app/outputs -v $(pwd)/data:/app/data training_image
