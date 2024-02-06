@@ -103,7 +103,7 @@ Each of the four models was trained on four datasets, resulting in 16 baseline m
 
 * A consistent trend observed throughout this analysis was the superior performance of lemmatization over stemming, and n-grams vectorization over TF-IDF, although at the expense of increased training time. Consequently, the lemmatized dataset with n-grams vectorization emerged as the preferred choice.
 * Due to extended training durations, tree-based models such as Random Forest and CatBoost were not subjected to hyperparameter tuning.
-* Among the four machine learning algorithms evaluated, Logistic Regression and Linear SVC not only yielded the best results but also demonstrated the quickest training and tuning times.
+* Among the four machine learning algorithms evaluated, Logistic Regression and Linear SVC not only yielded the best results but also demonstrated the quickest training times.
 * The tuned LinearSVC model, in particular, achieved the highest test (validation) accuracy at 0.8928, along with impressive metrics in other areas. Its training efficiency — being ten times faster than Logistic Regression on a lemmatized n-grams vectorized dataset — further backed its position as the optimal model for this project.
 * Feature importance analysis revealed that negative adjectives were highly influential in sentiment classification, especially in tree-based models. 
 
