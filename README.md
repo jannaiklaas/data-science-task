@@ -10,6 +10,11 @@ This project is focused on developing and deploying a machine learning model cap
 
 [Part II: Machine Learning Engineering](#part-ii-machine-learning-engineering)
 * [TL;DR: Execution Instructions](#tldr-execution-instructions)
+* [Project Structure](#project-structure)
+* [Prerequisites](#prerequisites)
+* [Data](#data)
+* [Training](#training)
+* [Inference](#inference)
 
 # Part I: Data Science
 In this part, different preprocessing approaches were explored and several models were tried on the train dataset ("train.csv"). Detailed methods and findings are described in the project's notebook ("Iklaas_J_Final_Project_DS23.ipynb"). The ultimate goal of this part was to determine the most optimal algorithm to achieve a validation accuracy of at least 0.85. 
