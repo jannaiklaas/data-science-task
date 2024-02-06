@@ -34,7 +34,7 @@ Upon closer inspection of the reviews, the following descriptive statistics was 
 * Number of tokens that appeared only once in the entire corpus: 93,648
 * Most common tokens in either sentiment label were special characters, HTML tags, articles, prepositions, pronouns, and other stop words. All of these were removed in the preprocessing stage.
 * Least common tokens in either sentiment label mostly contained special characters (like periods and hyphens) and/or were capitalized. 
-* There were a few words that were misspelled, meaning that the dataset (or at least the rare words) should have been run through spell-checking to reduce the volume of unique features and improve data quality. However, due to the large number of tokens, spell-checker's high computational cost and constrained hardware and time, spell-checking was not implemented in this project.
+* There were a few words that were misspelled, meaning that the dataset (or at least the rare words) should have been run through spell-checking to reduce the volume of unique features and improve data quality. However, given the extensive volume of tokens in the dataset, combined with the substantial computational demand of spell-checking and limitations in hardware and time resources, spell-checking was not performed for this project.
 
 ## Feature Preprocessing
 
@@ -54,9 +54,9 @@ The raw train data underwent the following preprocessing steps:
 * Vectorize the text using either n-grams (including unigrams, bigrams, and trigrams) or TF-IDF. The vectorizer will be fitted on the train subset and applied to both subsets.
 
 Eventually, four sets of train-test data were prepared with varying parameters:
-* Lemmatization with ngrams vectorization
+* Lemmatization with n-grams vectorization
 * Lemmatization with TF-IDF vectorization
-* Stemming with ngrams vectorization
+* Stemming with n-grams vectorization
 * Stemming with TF-IDF vectorization
 
 **General remarks:**
@@ -76,7 +76,7 @@ Eventually, four sets of train-test data were prepared with varying parameters:
 * The use of n-grams vectorization, ranging from unigrams to trigrams, significantly increased the dimensionality of the datasets. The lemmatized and stemmed datasets now contained over 4 million columns each. In contrast, TF-IDF vectorization did not alter the size of either the lemmatized or stemmed datasets.
 * Both the train and validation (test) sets aligned in terms of column numbers. This alignment was likely due to vectorization standardizing the features, ensuring that the features used in training are consistently applied to the test set.
 * The features vectorized with n-grams now included word combinations and phrases such as "best movie ever" and "worst film ever", highlighting the way n-grams capture more nuanced expressions of sentiment.
-* The features vectorized with TF-IDF had scores assigned to them, which ranged from 0 to 1. This was notceable from the change of y-axis scale in the "Top 30 Most Common/Important Features" plots.  
+* The features vectorized with TF-IDF were assigned scores ranging from 0 to 1, reflecting their relative importance. This scaling effect was evident in the altered y-axis scale of the 'Top 30 Most Common/Important Features' plots, where the scores indicated the aggregated weighted significance of each feature within the dataset.
 
 Below is the vectorization results summary:
 ```
@@ -103,7 +103,7 @@ Each of the four models was trained on four datasets, resulting in 16 baseline m
 
 * A consistent trend observed throughout this analysis was the superior performance of lemmatization over stemming, and n-grams vectorization over TF-IDF, although at the expense of increased training time. Consequently, the lemmatized dataset with n-grams vectorization emerged as the preferred choice.
 * Due to extended training durations, tree-based models such as Random Forest and CatBoost were not subjected to hyperparameter tuning.
-* Among the four machine learning algorithms evaluated, Logistic Regression and Linear SVC not only yielded the best results but also demonstrated the quickest training and tuning times.
+* Among the four machine learning algorithms evaluated, Logistic Regression and Linear SVC not only yielded the best results but also demonstrated the quickest training times.
 * The tuned LinearSVC model, in particular, achieved the highest test (validation) accuracy at 0.8928, along with impressive metrics in other areas. Its training efficiency — being ten times faster than Logistic Regression on a lemmatized n-grams vectorized dataset — further backed its position as the optimal model for this project.
 * Feature importance analysis revealed that negative adjectives were highly influential in sentiment classification, especially in tree-based models. 
 
@@ -288,7 +288,7 @@ After running "train.py" either locally or in Docker, processed data will be add
 │           ├── train_processed.csv
 │           └── validation_processed.csv
 <...>
-├── outputs                   # Directory training and inference outputs
+├── outputs                   # Directory for training and inference outputs
 │   ├── figures               # Directory for validation and inference plots
 │   │   ├── feature_importance.png
 │   │   └── model_1_validation_confusion_matrix.png
@@ -341,7 +341,7 @@ This project uses Python 3.10.12. Different Python versions might require adjust
 To start using this project, you first need to create a copy on your own GitHub account by 'forking' it. On the main page of the `data-science-task` project, click on the 'Fork' button at the top right corner. This will create a copy of the project under your own account. You can then 'clone' it to your local machine for personal use. To do this, click the 'Code' button on your forked repository, copy the provided link, and use the `git clone` command in your terminal followed by the copied link. This will create a local copy of the repository on your machine, and you're ready to start!
 
 ### Setting Up Development Environment
-Next, you need to set up a suitable Integrated Development Environment (IDE). Visual Studio Code (VSCode) is a great tool for this. You can download it from the official website (https://code.visualstudio.com/Download). After installing VSCode, open it and navigate to the `File` menu and click `Add Folder to Workspace`. Navigate to the directory where you cloned the forked repository and add it. VSCode supports a wide range of programming languages with features like syntax highlighting, code completion, and debugging configurations. You can now edit the files, navigate through your project, and start contributing to `data-science-task`. For running scripts, open a new terminal in VSCode by selecting `Terminal -> New Terminal`. Now you can execute your Python scripts directly in the terminal.
+Next, you need to set up a suitable Integrated Development Environment (IDE). Visual Studio Code (VSCode) is a great tool for this. You can download it from the official website (https://code.visualstudio.com/Download). After installing VSCode, open it and navigate to the `File` menu and click `Add Folder to Workspace`. Navigate to the directory where you cloned the forked repository and add it. For running scripts, open a new terminal in VSCode by selecting `Terminal -> New Terminal`. Now you can execute your Python scripts directly in the terminal.
 
 ### Installing Docker Desktop
 Installing Docker Desktop is a straightforward process. Head over to the Docker official website's download page ([Docker Download Page](https://www.docker.com/products/docker-desktop)), and select the version for your operating system - Docker Desktop is available for both Windows and Mac. After downloading the installer, run it, and follow the on-screen instructions. 
