@@ -2,6 +2,8 @@
 This script imports raw data and saves it locally as .csv files.
 It allows the user to specify local file paths or download the files.
 """
+
+# Import libraries
 import requests
 import os
 import logging
@@ -22,19 +24,16 @@ logger = logging.getLogger(__name__)
 URL_TRAIN = "https://raw.githubusercontent.com/jannaiklaas/datasets/main/movie-reviews/train.csv"
 URL_TEST = "https://raw.githubusercontent.com/jannaiklaas/datasets/main/movie-reviews/test.csv"
 
-def setup_directories():
-    """
-    Create required directories if they don't exist.
-    """
+# Define methods
+def setup_directories() -> None:
+    """Create required directories if they don't exist."""
     for directory in [RAW_TRAIN_DIR, RAW_INFERENCE_DIR]:
         if not os.path.exists(directory):
             os.makedirs(directory)
             logger.info(f"Created directory: {directory}")
 
-def download_file(url, filename):
-    """
-    Download file from a given URL and save it to a specified filename.
-    """
+def download_file(url: str, filename: str) -> None:
+    """Download file from a given URL and save it to a specified filename."""
     try:
         response = requests.get(url, stream=True)
         response.raise_for_status()  # Raise an exception for HTTP errors
@@ -46,10 +45,8 @@ def download_file(url, filename):
         logger.error(f"Error downloading {url}: {e}")
         sys.exit(1)
 
-def copy_file(src, dest):
-    """
-    Copy a file from src to dest.
-    """
+def copy_file(src: str, dest: str) -> None:
+    """Copy a file from src to dest."""
     try:
         shutil.copy(src, dest)
         logger.info(f"Copied file from {src} to {dest}")
@@ -57,28 +54,25 @@ def copy_file(src, dest):
         logger.error(f"Error copying {src} to {dest}: {e}")
         sys.exit(1)
 
-def main(local_train_path=None, local_test_path=None):
-    # Configure logging
+
+def main(local_train_path=None, local_test_path=None) -> None:
+    """Main method."""
     logging.basicConfig(level=logging.INFO, 
                         format='%(asctime)s - %(levelname)s - %(message)s')
-
-    # Setup directories
     setup_directories()
-
-    # Download or copy datasets
     train_dest = os.path.join(RAW_TRAIN_DIR, 'train.csv')
     test_dest = os.path.join(RAW_INFERENCE_DIR, 'test.csv')
-
     if local_train_path:
         copy_file(local_train_path, train_dest)
     else:
         download_file(URL_TRAIN, train_dest)
-
     if local_test_path:
         copy_file(local_test_path, test_dest)
     else:
         download_file(URL_TEST, test_dest)
 
+
+# Executing the script
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Data Loader Script')
     parser.add_argument('--local_train_path', type=str, help='Local path to the train dataset')

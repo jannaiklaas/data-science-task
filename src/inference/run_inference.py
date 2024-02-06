@@ -1,3 +1,7 @@
+"""
+Script loads the trained model, processor, data for inference and predicts results.
+"""
+# Importing libraries
 import os
 import sys
 import time
@@ -5,7 +9,6 @@ import pickle
 import logging
 import pandas as pd
 from sklearn.svm import LinearSVC
-
 
 # Define directories
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -23,10 +26,13 @@ PROCESSOR_DIR = os.path.join(OUTPUT_DIR, 'processors')
 FIG_DIR = os.path.join(OUTPUT_DIR, 'figures')
 PREDICTIONS_DIR = os.path.join(OUTPUT_DIR, 'predictions')
 
+# Importing custom packages
 from src.text_processor import TextPreprocessor
 from src.train.train import DataProcessor, Model
 
-def run_inference(path):
+# Define methods
+def run_inference(path: str) -> None:
+    """Runs inference for a given input file using the stored model and processor."""
     infer_raw = DataProcessor().data_extraction(path)
     processor = get_processor('processor_1.pkl')
     model = get_model('model_1.pkl')
@@ -52,6 +58,7 @@ def get_model(model_name: str = 'model_1.pkl') -> LinearSVC:
         sys.exit(1)
 
 def get_processor(processor_name: str = 'processor_1.pkl') -> TextPreprocessor:
+    """Loads and returns a fit processor."""
     path = os.path.join(PROCESSOR_DIR, processor_name)
     if not os.path.isfile(path):
         raise FileNotFoundError(f"No preprocessor found at {path}." 
@@ -65,7 +72,8 @@ def get_processor(processor_name: str = 'processor_1.pkl') -> TextPreprocessor:
         logging.error(f"An error occurred while loading the preprocessor from {path}: {e}")
         sys.exit(1)
 
-def predict_sentiment(model: LinearSVC, X_infer, infer_data: pd.DataFrame):
+def predict_sentiment(model: LinearSVC, X_infer: pd.DataFrame, 
+                      infer_data: pd.DataFrame) -> None:
     """Predict results and join it with the inderence dataframe."""
     logging.info("Running inference...")
     start_time = time.time()
@@ -83,6 +91,7 @@ def predict_sentiment(model: LinearSVC, X_infer, infer_data: pd.DataFrame):
 
 
 def main():
+    """Main method."""
     logging.basicConfig(level=logging.INFO, 
                         format='%(asctime)s - %(levelname)s - %(message)s')
     
