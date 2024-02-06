@@ -34,7 +34,7 @@ Upon closer inspection of the reviews, the following descriptive statistics was 
 * Number of tokens that appeared only once in the entire corpus: 93,648
 * Most common tokens in either sentiment label were special characters, HTML tags, articles, prepositions, pronouns, and other stop words. All of these were removed in the preprocessing stage.
 * Least common tokens in either sentiment label mostly contained special characters (like periods and hyphens) and/or were capitalized. 
-* There were a few words that were misspelled, meaning that the dataset (or at least the rare words) should have been run through spell-checking to reduce the volume of unique features and improve data quality. However, due to the large number of tokens, spell-checker's high computational cost and constrained hardware and time, spell-checking was not implemented in this project.
+* There were a few words that were misspelled, meaning that the dataset (or at least the rare words) should have been run through spell-checking to reduce the volume of unique features and improve data quality. However, given the extensive volume of tokens in the dataset, combined with the substantial computational demand of spell-checking and limitations in hardware and time resources, spell-checking was not performed for this project.
 
 ## Feature Preprocessing
 
