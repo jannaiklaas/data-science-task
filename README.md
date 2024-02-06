@@ -76,7 +76,7 @@ Eventually, four sets of train-test data were prepared with varying parameters:
 * The use of n-grams vectorization, ranging from unigrams to trigrams, significantly increased the dimensionality of the datasets. The lemmatized and stemmed datasets now contained over 4 million columns each. In contrast, TF-IDF vectorization did not alter the size of either the lemmatized or stemmed datasets.
 * Both the train and validation (test) sets aligned in terms of column numbers. This alignment was likely due to vectorization standardizing the features, ensuring that the features used in training are consistently applied to the test set.
 * The features vectorized with n-grams now included word combinations and phrases such as "best movie ever" and "worst film ever", highlighting the way n-grams capture more nuanced expressions of sentiment.
-* The features vectorized with TF-IDF had scores assigned to them, which ranged from 0 to 1. This was notceable from the change of y-axis scale in the "Top 30 Most Common/Important Features" plots.  
+* The features vectorized with TF-IDF were assigned scores ranging from 0 to 1, reflecting their relative importance. This scaling effect was evident in the altered y-axis scale of the 'Top 30 Most Common/Important Features' plots, where the scores indicated the aggregated weighted significance of each feature within the dataset.
 
 Below is the vectorization results summary:
 ```
