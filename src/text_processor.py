@@ -68,6 +68,7 @@ class TextPreprocessor:
         return X_vectorized, y, cleaned_data
 
     def _get_vectorizer(self):
+        """Specifies vectorizer."""
         if self.vectorization_type.lower() == 'ngrams':
             return CountVectorizer(ngram_range=(1, 3), stop_words=list(self.stop_words))
         elif self.vectorization_type.lower() == 'tf-idf':
