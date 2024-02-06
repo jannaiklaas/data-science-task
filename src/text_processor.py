@@ -1,3 +1,7 @@
+"""
+Script to preprocess text data.
+"""
+# Import libraries
 import re
 import nltk
 from nltk.corpus import stopwords
@@ -14,6 +18,9 @@ nltk.download('wordnet', quiet=True)
 nltk.download('averaged_perceptron_tagger', quiet=True)
 
 class TextPreprocessor:
+    """
+    Preprocesses text data for sentiment analysis. 
+    """
     def __init__(self, use_lemmatization=True, vectorization_type=None):
         self.use_lemmatization = use_lemmatization
         self.vectorization_type = vectorization_type
@@ -36,6 +43,7 @@ class TextPreprocessor:
         }
 
     def preprocess(self, data, fit_vectorizer=False):
+        """Cleans, tokenizes, and vectorizes text data."""
         cleaned_data = data.copy()
         if 'sentiment' in data.columns:
             cleaned_data['sentiment'] = data['sentiment'].map({'negative': 0, 'positive': 1})
@@ -68,7 +76,7 @@ class TextPreprocessor:
             raise ValueError("Invalid vectorization type specified.")
 
     def _initial_preprocess(self, text):
-        # Expand contractions, case-insensitive
+        """Filters through data to obtain sensical words."""
         for contraction, expanded in self.contraction_mapping.items():
             text = re.sub(contraction, expanded, text, flags=re.IGNORECASE)
         text = re.sub(r'http\S+|www\S+|https\S+', ' ', text, flags=re.MULTILINE)
@@ -80,11 +88,13 @@ class TextPreprocessor:
         return [word.lower() for word in tokens]
 
     def _calculate_rare_words(self, reviews):
+        """Calculates and eliminates rare words from the corpus."""
         all_words = [word for review in reviews for word in self._initial_preprocess(review)]
         word_counts = Counter(all_words)
         self.rare_words = {word for word, count in word_counts.items() if count == 1}
 
     def _clean_text(self, text):
+        """Outputs lemmatized or stemmed tokens."""
         tokens = self._initial_preprocess(text)
         tokens = [word for word in tokens if word not in self.rare_words and word not in self.stop_words and len(word) > 2]
 
