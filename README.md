@@ -272,7 +272,7 @@ After running "train.py" either locally or in Docker, processed data will be add
 │           ├── train_processed.csv
 │           └── validation_processed.csv
 <...>
-├── outputs                   # Directory training and inference outputs
+├── outputs                   # Directory for training and inference outputs
 │   ├── figures               # Directory for validation and inference plots
 │   │   ├── feature_importance.png
 │   │   └── model_1_validation_confusion_matrix.png
